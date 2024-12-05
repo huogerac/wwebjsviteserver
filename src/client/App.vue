@@ -8,7 +8,7 @@ import Home from "./components/Home.vue";
       <img src="/vite.svg" class="logo" alt="Vite logo" />
     </a>
   </div>
-  <Home msg="WWeb.js" />
+  <Home />
 </template>
 
 <style scoped>
