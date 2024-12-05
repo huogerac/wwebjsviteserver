@@ -92,7 +92,6 @@ async function startServer() {
       console.log('conectarFone.message:', message)
       fone = message.fone
 
-      // 5512991088998
       if (fone.length != 13 || !fone.startsWith("55")) {
         console.log('invalid fone!')
         socket.emit('message', 'invalid fone!');
