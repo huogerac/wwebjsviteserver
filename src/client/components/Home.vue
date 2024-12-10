@@ -10,8 +10,11 @@ export default {
     const connected = ref(false);
     const loading = ref(true);
     
+    const chatSelected = ref(0)
     const chats = ref([])
     const chatMessages = ref([])
+
+    let newMessageTxt = ref('')
 
     onMounted(() => {
       console.log('Client mounted');
@@ -75,16 +78,7 @@ export default {
       }
     });
 
-    const enviarMensagem = () => {
-      console.log("cheguei aqui 1")
-      if (socket) {
-        console.log("cheguei aqui 1")
-        const message = 'Mensagem do cliente ----';
-        socket.emit('message', message);
-        console.log("cheguei aqui 1")
-        console.log('Mensagem enviada:', message);
-      }
-    };
+
 
     const conectarFoneBtn = () => {
       if (socket) {
@@ -94,10 +88,23 @@ export default {
       }
     };
 
-    const selectChat = (messagesSel) => {
+    const selectChat = (messagesSel, chatId) => {
       console.log('selectedChat',messagesSel)
       chatMessages.value = messagesSel
+      chatSelected.value = chatId
     }
+
+    const enviarMensagem = () => {
+      console.log("cheguei aqui 1")
+      if (socket) {
+        const message = {
+          chatId: chatSelected.value,
+          content: newMessageTxt.value
+        }
+        socket.emit('enviarMensagem', message);
+      }
+    }
+
 
     return {
       messages,
@@ -110,6 +117,8 @@ export default {
       chats,
       chatMessages,
       selectChat,
+      newMessageTxt,
+      chatSelected,
     };
   }
 };
@@ -161,7 +170,7 @@ export default {
         </thead>
         <tbody>
           <tr v-for="chat in chats">
-            <td @click="selectChat(chat.messages)">{{ chat.name }}</td>
+            <td @click="selectChat(chat.messages, chat.id)">{{ chat.name }}</td>
           </tr>
         </tbody>
       </table>
@@ -175,6 +184,14 @@ export default {
           </tr>
         </tbody>
       </table>
+
+      <div class="card">
+        <div class="card-body">
+          <input type="text" class="form-control" id="" placeholder="Mensagem..." v-model="newMessageTxt">
+          <button type="button" class="btn btn-sm btn-outline-primary" @click="enviarMensagem">Enviar</button>
+        </div>
+      </div>
+
     </div>
   </div>  <!-- row -->
 

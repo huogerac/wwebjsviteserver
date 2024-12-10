@@ -164,6 +164,15 @@ async function startServer() {
       socket.emit('message', ' 2XXX ' + message);
 
     });
+
+    socket.on('enviarMensagem', async (message) => {
+      console.log('---> Recebeu msg do browser:', message);
+      if (message && message.content) {
+        const sendMessageResponse = await client.sendMessage(message.chatId, message.content);
+        console.log('sendMessageResponse::::', sendMessageResponse)
+      }
+    });
+
     socket.on("conectarFone", (message) => {
       console.log('conectarFone.message:', message)
       fone = message.fone
