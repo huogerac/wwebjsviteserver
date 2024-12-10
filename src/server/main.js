@@ -4,14 +4,18 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { createServer as createViteServer } from 'vite';
 
-// WWebJS
 import wwebjs from 'whatsapp-web.js';
-const { Client, LocalAuth } = wwebjs
 
+// Local DB
+let phone = {}
+
+// WWebJS
+const { Client, LocalAuth } = wwebjs
 const pairingCodeEnabled = true;
 let pairingCodeRequested = false;
 let fone = ''
 let clientReady = false;
+let currentPhoneNumber = {}
 
 const client = new Client({
   authStrategy: new LocalAuth({ clientId: 'huogerac-zap' }),
@@ -30,37 +34,57 @@ const client = new Client({
   }
 });
 
-// webjs
 
-client.on('authenticated', () => {
-  // socket.emit('authenticated', '--->Autenticado!');
-  // socket.emit('message', '--->Autenticado!');
-  console.log('--->Autenticado!');
-});
 
-client.on('auth_failure', function () {
-  // socket.emit('message', '---> Falha autenticação');
-  console.error('---> Falha autenticação');
-});
 
-// client.on('change_state', state => {
-//   socket.emit('message', '---> change_state:' + state);
-//   console.log('---> change_state:' + state);
-// });
+async function getChats() {
+  try {
+    const response = []
+    const chats = await client.getChats();
 
-// Configuração WWebJS
-client.once('ready', () => {
-  console.log('ONCE READY ---> Web Client is ready!');
-});
+    for (const item of chats) {
+      console.log('====>', item)
+      const _chatId = item.id._serialized
+      console.log('obtendo chats:', _chatId)
+      const _chat = await client.getChatById(_chatId);
+      let _newChat = {
+        id: _chatId,
+        name: _chat.name,
+        isGroup: _chat.isGroup,
+        isReadOnly: _chat.isReadOnly,
+        unreadCount: _chat.unreadCount,
+        timestamp: _chat.timestamp,
+        archived: _chat.archived,
+        pinned: _chat.pinned,
+        isMuted: _chat.isMuted,
+        muteExpiration: _chat.muteExpiration,
+        messages: []
+      }
+      const _messages = await _chat.fetchMessages({ limit: 10 });
+      for (const _msg of _messages) {
+        const newMsg = {
+          id: _msg.id._serialized,
+          body: _msg.body,
+          type: _msg.type,
+          timestamp: _msg.timestamp,
+          from: _msg.from,
+          to: _msg.to,
+          fromMe: _msg.fromMe,
+          orderId: _msg.orderId,
+        }
+        _newChat.messages.push(newMsg)
+      }
+      response.push(_newChat)
+    };
 
-client.on('disconnected', (reason) => {
-  //socket.emit('message', '---> disconnected:' + reason);
-  console.log('---> disconnected:' + reason);
-  clientReady = false;
-  client.initialize();
-});
+    console.log('-----------------chats:', response)
+    return response
+  } catch(err) {
+    console.log('error:', err)
+  }
+}
 
-client.initialize();
+
 
 
 async function startServer() {
@@ -79,8 +103,60 @@ async function startServer() {
 
   // Configuração do Socket.IO
   io.on('connection', (socket) => {
+
     console.log('A user connected');
-    socket.emit('message', 'Hello from server');
+    socket.emit('server_message', 'Hello from server');
+
+    // ----- WWEBJS
+    client.on('authenticated', () => {
+      // socket.emit('authenticated', '--->Autenticado!');
+      socket.emit('server_message', 'authenticated');
+      console.log('--->Autenticado!');
+    });
+
+    client.on('auth_failure', function () {
+      socket.emit('server_message', 'auth_failure');
+      console.error('---> Falha autenticação');
+    });
+
+    client.on('change_state', state => {
+      socket.emit('server_message', 'change_state:' + state);
+      console.log('---> change_state:' + state);
+    });
+
+    // Configuração WWebJS
+    // client.once('ready', (details) => {
+    //   console.log('ONCE READY [1] ---> Web Client is ready!', details);
+    //   socket.emit('server_message', 'ready');
+    // });
+
+    client.on('ready', async () => {
+      clientReady = true;
+      console.log('ON READY ---> Web Client is ready!');
+    
+      // Retrieve the phone number
+      // const me = await client.getMe();
+      //console.log("info:", client.info)
+      console.log("info:")
+      currentPhoneNumber = {
+        pushname: client.info.pushname,
+        phone: client.info.wid.user,
+      }
+      console.log("currentPhoneNumber:", currentPhoneNumber)
+      socket.emit('connectedFone', currentPhoneNumber);
+    
+      const _all_chats = await getChats();
+      socket.emit('all_chats', _all_chats);
+    
+    });
+    
+    client.on('disconnected', (reason) => {
+      //socket.emit('message', '---> disconnected:' + reason);
+      console.log('---> disconnected:' + reason);
+      socket.emit('server_message', {});
+      clientReady = false;
+      client.initialize();
+    });
 
     // socket from client
     socket.on('message', (message) => {
@@ -94,7 +170,7 @@ async function startServer() {
 
       if (fone.length != 13 || !fone.startsWith("55")) {
         console.log('invalid fone!')
-        socket.emit('message', 'invalid fone!');
+        socket.emit('server_message', 'invalid fone!');
         return
       }
 
@@ -106,7 +182,7 @@ async function startServer() {
           const pairingCode = await client.requestPairingCode(fone);
           pairingCodeRequested = true;
           console.log(' ==> Pairing code enabled, code: 👉' + pairingCode);
-          socket.emit('message', 'PAIRING CODE: 👉' + pairingCode);
+          socket.emit('server_message', 'PAIRING CODE: 👉' + pairingCode);
           socket.emit('pairingCode', pairingCode);
         } else {
           console.log('QR IGNORED')
@@ -115,28 +191,18 @@ async function startServer() {
 
     });
 
-    client.on('ready', async () => {
-      clientReady = true;
-      console.log('ON READY ---> Web Client is ready!');
-
-      // Retrieve the phone number
-      const me = await client.getMe();
-      currentPhoneNumber = me.id.user;
-      console.log('Current phone number:', currentPhoneNumber);
-      socket.emit('connectedFone', currentPhoneNumber);
-    });
-
     client.on('message_create', async msg => {
       console.log('---> Nova mensagem', msg);
-      if (msg.body !== "" && msg.body.indexOf("ping") != -1) {
-        const msgReply = '👏 Obrigado pelo contato, logo irei responder...'
-        msg.reply(msgReply)
-        // client.sendMessage(message.from, 'pong');
-        socket.emit('message', msgReply);
-      } else if (msg.body !== "" && msg.body.indexOf("Obrigado pelo contato") == -1 && msg.body.indexOf("PONG") == -1) {
-        const msgReply = '🏓 PONG!'
-        msg.reply(msgReply)
+
+      if (msg.body !== "") {
+        socket.emit('new_message', msg);
+
+        if (msg.body.indexOf("ping") != -1) {
+          const msgReply = '🏓 PONG!'
+          msg.reply(msgReply)
+        } 
       }
+
     });
 
     socket.on('disconnect', () => {
@@ -147,6 +213,9 @@ async function startServer() {
 
 
   });
+
+  // WWebJS
+  client.initialize();
 
   // Rota para servir a página inicial
   app.get('/', (req, res) => {
