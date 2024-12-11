@@ -32,6 +32,11 @@ export default {
         console.log('Received initialized:', msg);
       });
 
+      socket.on('clientInitialized', (msg) => {
+        console.log('Received client-initialized:', msg);
+        loading.value = false;
+      });     
+
       socket.on('new_message', (msg) => {
         //messages.value.push(msg);
         console.log('Received message:', msg);
@@ -132,18 +137,15 @@ export default {
 
     <div class="col">
 
-      <h1>loading:{{ loading }}</h1>
+      <h2>{{ title }}</h2>
       <div v-if="loading">
         <div class="spinner-border" role="status">
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
-
-      <h1>{{ title }}</h1>
       <p>fone: {{ fone }}</p>
 
-      <div class="card" v-if="!loading">
-        <button type="button" @click="enviarMensagem">Enviar</button>
+      <div class="card mb-4" v-if="!loading">
         <p v-if="!connected">
           <label for="fone">Fone:</label>
           <input type="text" name="fone" id="fone" v-model="fone">
@@ -152,9 +154,6 @@ export default {
         <p v-else>
           <label for="fone">Conectado</label>
           <input type="text" name="fone" id="fone" v-model="fone" readonly>
-        </p>
-        <p>
-          <code v-for="message in messages" :key="message">🫸 {{ message }}</code>
         </p>
       </div>
 

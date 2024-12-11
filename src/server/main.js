@@ -110,12 +110,12 @@ async function startServer() {
     // ----- WWEBJS
     client.on('authenticated', () => {
       // socket.emit('authenticated', '--->Autenticado!');
-      socket.emit('server_message', 'authenticated');
+      socket.emit('clientInitialized', 'authenticated');
       console.log('--->Autenticado!');
     });
 
     client.on('auth_failure', function () {
-      socket.emit('server_message', 'auth_failure');
+      socket.emit('clientInitialized', 'auth_failure');
       console.error('---> Falha autenticação');
     });
 
@@ -218,13 +218,13 @@ async function startServer() {
       console.log('User disconnected');
     });
 
-
-
-
   });
 
-  // WWebJS
-  client.initialize();
+
+    // WWebJS
+    client.initialize().then((status) => {
+      console.log('clientInitialized==================>', status)
+    });
 
   // Rota para servir a página inicial
   app.get('/', (req, res) => {
