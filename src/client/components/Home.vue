@@ -1,11 +1,14 @@
 <script>
 import { inject, ref, onMounted, onBeforeUnmount } from 'vue';
 
+// date.toLocaleString()      ==> '12/11/2024, 3:12:02 PM'
+// date.toLocaleDateString(); ==>'12/11/2024'
+
 export default {
   setup() {
     const socket = inject('socket'); // Inject the global socket instance
     const messages = ref([]);
-    const title = ref('Oi WWebJS');
+    const title = ref('Oi WPPConnect');
     const fone = ref('');
     const connected = ref(false);
     const loading = ref(true);
@@ -66,8 +69,9 @@ export default {
       });
 
       socket.on('all_chats', (allChats) => {
-        console.log('all_chats currentPhoneNumber');
+        console.log('allChats:', allChats);
         chats.value = allChats;
+        loading.value = false;
       });
 
       socket.on('server_message', (msg) => {
@@ -169,7 +173,14 @@ export default {
         </thead>
         <tbody>
           <tr v-for="chat in chats">
-            <td @click="selectChat(chat.messages, chat.id)">{{ chat.name }}</td>
+            <td @click="selectChat(chat.messages, chat.id)">
+              <p>
+                <img :src="chat.img" alt="" height="42" >
+                <span>{{ chat.name || chat.contact.formattedName || chat.id }}</span>
+                <span style="padding-left: 4px; font-size: 0.7em; color: grey">
+                  {{ new Date(chat.timestamp * 1000).toLocaleDateString() }}</span>
+              </p>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -179,7 +190,22 @@ export default {
       <table class="table">
         <tbody>
           <tr v-for="msg in chatMessages">
-            <td>{{ msg.body }}</td>
+            <td v-if="msg.fromMe" style="text-align: right;">
+
+                <p>{{ msg.fromMe }} {{ msg.body }}</p>
+                <span style="padding-left: 4px; font-size: 0.7em; color: grey"> viewed:{{msg.viewed}},ack:{{msg.ack}},isNewMsg:{{msg.isNewMsg}} :: </span>
+                <span style="padding-left: 4px; font-size: 0.7em; color: grey">
+                  {{ new Date(msg.timestamp * 1000).toLocaleString() }}</span>
+
+
+            </td>
+            <td v-else style="margin-left: 60px; background-color: darkgrey; text-align: left">
+              <p>{{ msg.body }}</p>
+              <span style="padding-left: 4px; font-size: 0.7em; color: grey"> viewed:{{msg.viewed}},ack:{{msg.ack}},isNewMsg:{{msg.isNewMsg}} :: </span>
+              <span style="padding-left: 4px; font-size: 0.7em; color: grey">
+                  {{ new Date(msg.timestamp * 1000).toLocaleString() }}</span>
+
+            </td>
           </tr>
         </tbody>
       </table>
